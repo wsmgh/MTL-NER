@@ -5,13 +5,13 @@ from crf import CRF
 
 class MTL_BC(nn.Module):
 
-    def __init__(self,vocab_size,w_emb_size,c_emb_size,w_hiden_size,c_hiden_size,ds,device):
+    def __init__(self,vocab_size,char_size,w_emb_size,c_emb_size,w_hiden_size,c_hiden_size,ds,device):
         super(MTL_BC,self).__init__()
         self.c_hiden_size=c_hiden_size
         self.ds=ds
 
         self.w_emb=nn.Embedding(vocab_size,w_emb_size)
-        self.c_emb=nn.Embedding(27,c_emb_size)
+        self.c_emb=nn.Embedding(char_size,c_emb_size)
 
         self.c_lstm_f=nn.LSTM(input_size=c_emb_size,hidden_size=c_hiden_size//2,batch_first=True)
         self.c_lstm_b=nn.LSTM(input_size=c_emb_size,hidden_size=c_hiden_size//2,batch_first=True)
@@ -38,7 +38,8 @@ class MTL_BC(nn.Module):
         :param input_char_ids_f: batch_size * seq_len_char
         :param input_word_pos_f: batch_size * seq_len
         :param input_char_ids_b: batch_size * seq_len_char
-        :param input_char_pos_b: batch_size * seq_len
+        :param input_word_pos_b: batch_size * seq_len
+        :param ds_num: 数据所属的数据集编号
         :return:
         '''
 
@@ -74,7 +75,11 @@ class MTL_BC(nn.Module):
 
     def forward_loss(self,input_word_ids,input_char_ids_f,input_word_pos_f,
                           input_char_ids_b,input_word_pos_b,tags,lens,ds_num):
-
+        '''
+        :param lens: bath_size
+        其余同forward
+        :return:
+        '''
         scores=self.forward(input_word_ids,input_char_ids_f,input_word_pos_f,input_char_ids_b,input_word_pos_b,ds_num)
 
         return self.crf[ds_num].calculate_loss(scores,tags,lens)
