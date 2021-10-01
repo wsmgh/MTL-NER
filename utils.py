@@ -1,5 +1,6 @@
 import torch
-
+from data import *
+from collections import namedtuple
 
 def read_data(fpath=''):
     data=[]
@@ -94,5 +95,39 @@ def get_space_pos(s=[]):
             pos.append(i)
     return pos
 
+def my_next(it):
+    try:
+        ans=next(it)
+    except StopIteration:
+        return None
+    return ans
 
+def next_items_of_iterators(iter_list=[]):
+    ls = set({})
+    items = {}
+    for i in range(len(iter_list)):
+        items[i] = my_next(iter_list[i])
+        if items[i] is not None:
+            ls.add(i)
+    return ls,items
+
+def collect_words(data=[]):
+    vocab=set({})
+    for item in data:
+        vocab=vocab.union(item.split())
+    return list(vocab)
+
+def collect_chars(data=[]):
+    chars=set({' '})
+    for w in data:
+        chars=chars.union(list(w))
+    return list(chars)
+
+def get_dataset_info(data=[]):
+    DataSetInfo = namedtuple('DataSet', 'id2label label2id')
+    tagset=['<pad>']+collect_words(list(map(lambda x:x[1],data)))+['<STOP>','<START>']
+    label2id = {w: i for i, w in enumerate(tagset)}
+    id2label = {i: w for i, w in enumerate(tagset)}
+    dsi=DataSetInfo(id2label,label2id)
+    return dsi
 
