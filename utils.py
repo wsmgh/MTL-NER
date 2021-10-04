@@ -145,13 +145,13 @@ def load_data(dir=''):
         for f in os.listdir(path):
             if f=='train.tsv':
                 train_data=read_data(os.path.join(path,f))
-                tem['train']=train_data[:20]
+                tem['train']=train_data[:10]
             elif f=='devel.tsv':
                 devel_data=read_data(os.path.join(path,f))
-                tem['devel']=devel_data[:20]
+                tem['devel']=devel_data[:10]
             elif f=='test.tsv':
                 test_data=read_data(os.path.join(path,f))
-                tem['test']=test_data[:20]
+                tem['test']=test_data[:10]
 
         data.append(tem)
 

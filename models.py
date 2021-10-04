@@ -74,7 +74,7 @@ class MTL_BC(nn.Module):
 
 
     def forward_loss(self,input_word_ids,input_char_ids_f,input_word_pos_f,
-                          input_char_ids_b,input_word_pos_b,tags,lens,ds_num):
+                          input_char_ids_b,input_word_pos_b,tags,lens,ds_num,need_predict=True):
         '''
         :param lens: bath_size
         其余同forward
@@ -82,7 +82,13 @@ class MTL_BC(nn.Module):
         '''
         scores=self.forward(input_word_ids,input_char_ids_f,input_word_pos_f,input_char_ids_b,input_word_pos_b,ds_num)
 
-        return self.crf[ds_num].calculate_loss(scores,tags,lens)
+        loss=self.crf[ds_num].calculate_loss(scores,tags,lens)
+
+        if need_predict:
+            tags, _ = self.crf[ds_num]._obtain_labels(scores, self.ds[ds_num].id2label, lens)
+            return loss,tags
+
+        return loss
 
 
     def predict(self,input_word_ids,input_char_ids_f,input_word_pos_f,

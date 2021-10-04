@@ -2,6 +2,8 @@ from data import *
 from utils import *
 from tqdm import *
 from models import MTL_BC
+from metrics import *
+import copy
 
 def train():
 
@@ -46,9 +48,17 @@ def train():
 
     optim = torch.optim.Adam(model.parameters())
 
-    train_loss = []
-    devel_loss=[]
-    # 训练
+    tem={}
+    for i in range(len(dataset_name)):
+        tem[i]=[]
+
+    train_loss=copy.deepcopy(tem)
+    devel_loss=copy.deepcopy(tem)
+    train_acc=copy.deepcopy(tem)
+    devel_acc=copy.deepcopy(tem)
+    train_f1=copy.deepcopy(tem)
+    devel_f1=copy.deepcopy(tem)
+
     for epoch in range(1):
 
         # 初始化各个数据集的信息
@@ -64,13 +74,14 @@ def train():
 
         ls, batchs = next_items_of_iterators(it_train)
         model.train()
+        loss_batch, acc_batch, f1_batch = copy.deepcopy(tem), copy.deepcopy(tem), copy.deepcopy(tem)
         while True:
 
             # 训练一个大batch（由来自各个数据集的小batch组成）
             for i in ls:
                 batch = tokenize(batchs[i], ds_info[i].label2id, word2id, char2id, device)
 
-                loss = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
+                loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
                                           , batch['char_ids_b'], batch['word_pos_b'], batch['label_ids']
                                           , batch['lens'], i)
 
@@ -78,8 +89,9 @@ def train():
                 loss.backward()
                 optim.step()
 
-                train_loss.append(loss.item())
-            range()
+
+
+
             # 获取下一批数据
             ls, batchs = next_items_of_iterators(it_train)
             if len(ls) == 0:
@@ -93,10 +105,10 @@ def train():
             for i in ls:
                 batch = tokenize(batchs[i], ds_info[i].label2id, word2id, char2id, device)
 
-                loss = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
+                loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
                                           , batch['char_ids_b'], batch['word_pos_b'], batch['label_ids']
                                           , batch['lens'], i)
-                devel_loss.append(loss.item())
+
 
             # 获取下一批数据
             ls, batchs = next_items_of_iterators(it_devel)
