@@ -1,6 +1,7 @@
 import torch
 from data import *
 from collections import namedtuple
+import os
 
 def read_data(fpath=''):
     data=[]
@@ -130,4 +131,38 @@ def get_dataset_info(data=[]):
     id2label = {i: w for i, w in enumerate(tagset)}
     dsi=DataSetInfo(id2label,label2id)
     return dsi
+
+def load_data(dir=''):
+
+    name=[]
+    data=[]
+    for d in os.listdir(dir):
+        name.append(d)
+        path=os.path.join(dir,name[-1])
+
+        tem={}
+
+        for f in os.listdir(path):
+            if f=='train.tsv':
+                train_data=read_data(os.path.join(path,f))
+                tem['train']=train_data[:20]
+            elif f=='devel.tsv':
+                devel_data=read_data(os.path.join(path,f))
+                tem['devel']=devel_data[:20]
+            elif f=='test.tsv':
+                test_data=read_data(os.path.join(path,f))
+                tem['test']=test_data[:20]
+
+        data.append(tem)
+
+    return name,data
+
+
+
+
+
+if __name__=='__main__':
+    name,data=load_data('./data')
+    print('done')
+
 
