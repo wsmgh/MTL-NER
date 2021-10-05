@@ -1,6 +1,6 @@
 from data import *
 from utils import *
-from tqdm import *
+from tqdm import tqdm
 from models import MTL_BC
 from metrics import *
 import copy
@@ -66,16 +66,19 @@ def train():
         for d in dl:
             for k in d.keys():
                 if k=='train':
-                    it_train.append(iter(d[k]))
+                    it_train.append(d[k])
                 elif k=='devel':
-                    it_devel.append(iter(d[k]))
+                    it_devel.append(d[k])
                 elif k=='test':
-                    it_test.append(iter(d[k]))
+                    it_test.append(d[k])
 
-        ls, batchs = next_items_of_iterators(it_train)
+
+        dpacker=DataPacker(it_train)
+
         model.train()
         loss_batch, acc_batch, f1_batch = copy.deepcopy(tem), copy.deepcopy(tem), copy.deepcopy(tem)
-        while True:
+
+        for ls,batchs in tqdm(dpacker):
 
             # 训练一个大batch（由来自各个数据集的小batch组成）
             for i in ls:
@@ -91,16 +94,10 @@ def train():
 
 
 
-
-            # 获取下一批数据
-            ls, batchs = next_items_of_iterators(it_train)
-            if len(ls) == 0:
-                break
-
-
         model.eval()
-        ls,batchs=next_items_of_iterators(it_devel)
-        while True:
+        dpacker = DataPacker(it_devel)
+
+        for ls,batchs in tqdm(dpacker):
 
             for i in ls:
                 batch = tokenize(batchs[i], ds_info[i].label2id, word2id, char2id, device)
@@ -108,12 +105,6 @@ def train():
                 loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
                                           , batch['char_ids_b'], batch['word_pos_b'], batch['label_ids']
                                           , batch['lens'], i)
-
-
-            # 获取下一批数据
-            ls, batchs = next_items_of_iterators(it_devel)
-            if len(ls) == 0:
-                break
 
     print('done')
 
