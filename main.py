@@ -1,3 +1,5 @@
+import torch
+
 from data import *
 from utils import *
 from tqdm import tqdm
@@ -37,7 +39,7 @@ def train():
         tem_dl={}
         for i in data.keys():
             tem_ds[i]=NerDataset(data[i])
-            tem_dl[i]=DataLoader(tem_ds[i], batch_size=2)
+            tem_dl[i]=DataLoader(tem_ds[i], batch_size=32)
 
         ds.append(tem_ds)
         dl.append(tem_dl)
@@ -92,11 +94,31 @@ def train():
                 loss.backward()
                 optim.step()
 
+                labels=get_tag_id(labels,ds_info[i].label2id)
+
+                acc_batch[i].append(acc(batch['label_ids'],labels,batch['lens']))
+
+                f1s=f_score(batch['label_ids'],labels,len(ds_info[i].label2id)-3,batch['lens'])
+                f1_batch[i].append(torch.mean(f1s).item())
+
+                loss_batch[i].append(loss.item())
+
+        for k in loss_batch.keys():
+            train_loss[k].append(torch.mean(torch.tensor(loss_batch[k])).item())
+            train_acc[k].append(torch.mean(torch.tensor(acc_batch[k])).item())
+            train_f1[k].append(torch.mean(torch.tensor(f1_batch[k])).item())
+
+        print('dataset_name  train_f1  train_acc  train_loss')
+        for k in train_loss:
+            print(dataset_name[k],' ',train_f1[k][-1], ' ', train_acc[k][-1], ' ', train_loss[k][-1])
+
+
+
 
 
         model.eval()
         dpacker = DataPacker(it_devel)
-
+        loss_batch, acc_batch, f1_batch = copy.deepcopy(tem), copy.deepcopy(tem), copy.deepcopy(tem)
         for ls,batchs in tqdm(dpacker):
 
             for i in ls:
@@ -105,6 +127,26 @@ def train():
                 loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
                                           , batch['char_ids_b'], batch['word_pos_b'], batch['label_ids']
                                           , batch['lens'], i)
+
+                labels = get_tag_id(labels, ds_info[i].label2id)
+
+                acc_batch[i].append(acc(batch['label_ids'], labels, batch['lens']))
+
+                f1s = f_score(batch['label_ids'], labels, len(ds_info[i].label2id) - 3, batch['lens'])
+                f1_batch[i].append(torch.mean(f1s).item())
+
+                loss_batch[i].append(loss.item())
+
+
+        for k in loss_batch.keys():
+            devel_loss[k].append(torch.mean(torch.tensor(loss_batch[k])).item())
+            devel_acc[k].append(torch.mean(torch.tensor(acc_batch[k])).item())
+            devel_f1[k].append(torch.mean(torch.tensor(f1_batch[k])).item())
+
+        print('dataset_name  devel_f1  devel_acc  devel_loss')
+        for k in devel_loss:
+            print(dataset_name[k], ' ', devel_f1[k][-1], ' ', devel_acc[k][-1], ' ', devel_loss[k][-1])
+
 
     print('done')
 

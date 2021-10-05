@@ -145,17 +145,30 @@ def load_data(dir=''):
         for f in os.listdir(path):
             if f=='train.tsv':
                 train_data=read_data(os.path.join(path,f))
-                tem['train']=train_data[:10]
+                tem['train']=train_data
             elif f=='devel.tsv':
                 devel_data=read_data(os.path.join(path,f))
-                tem['devel']=devel_data[:10]
+                tem['devel']=devel_data
             elif f=='test.tsv':
                 test_data=read_data(os.path.join(path,f))
-                tem['test']=test_data[:10]
+                tem['test']=test_data
 
         data.append(tem)
 
     return name,data
+
+
+def get_tag_id(labels=[],label2id={}):
+    ids=[]
+    maxn=0
+    for l in labels:
+        ids.append([label2id[t] for t in l])
+        maxn=max(maxn,len(l))
+
+    for i in range(len(ids)):
+        ids[i]+=[0]*(maxn-len(ids[i]))
+
+    return torch.tensor(ids)
 
 
 
