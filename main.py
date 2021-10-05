@@ -46,7 +46,7 @@ def train():
 
     device = torch.device('cpu')
 
-    model = MTL_BC(len(vocab), len(char), 16, 16, 16, 16, ds_info, device).to(device)
+    model = MTL_BC(len(vocab), len(char),w_emb_size=200,c_emb_size=200,w_hiden_size=300,c_hiden_size=600,ds=ds_info,device=device).to(device)
 
     optim = torch.optim.Adam(model.parameters())
 
@@ -61,7 +61,7 @@ def train():
     train_f1=copy.deepcopy(tem)
     devel_f1=copy.deepcopy(tem)
 
-    for epoch in range(1):
+    for epoch in range(100):
 
         # 初始化各个数据集的信息
         it_train,it_devel,it_test=[],[],[]
@@ -148,6 +148,7 @@ def train():
             print(dataset_name[k], ' ', devel_f1[k][-1], ' ', devel_acc[k][-1], ' ', devel_loss[k][-1])
 
 
+    torch.save(model.state_dict(),'best-model.pt')
     print('done')
 
 

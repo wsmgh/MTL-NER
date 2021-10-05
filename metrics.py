@@ -45,7 +45,7 @@ def f_score(x, y, c,lens, b=1,epsilon=1e-10):
         c:类别的数量
         epsilon:防止除零而设的小常数
     '''
-
+    x=x.to(y.device)
     # c * 4
     s=statistic(x,y,c,lens)
 
@@ -66,7 +66,7 @@ def acc(x,y,lens=[],ndigit=6):
     y:预测类别标签
     x,y shape: batch_size * seq_len
     '''
-
+    x=x.to(y.device)
     ct,tot=0,0
     for i in range(len(x)):
         ct+=torch.sum(x[i][:lens[i]]==y[i][:lens[i]])
