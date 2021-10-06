@@ -5,7 +5,7 @@ from crf import CRF
 
 class MTL_BC(nn.Module):
 
-    def __init__(self,vocab_size,char_size,w_emb_size,c_emb_size,w_hiden_size,c_hiden_size,ds,device):
+    def __init__(self,vocab_size,char_size,w_emb_size,c_emb_size,w_hiden_size,c_hiden_size,dropout_rate,ds,device):
         super(MTL_BC,self).__init__()
         self.c_hiden_size=c_hiden_size
         self.ds=ds
@@ -21,6 +21,8 @@ class MTL_BC(nn.Module):
         self.linear=nn.ModuleList([nn.Linear(w_hiden_size,len(ds[i].label2id)) for i in range(len(ds))])
 
         self.crf=nn.ModuleList([CRF(len(ds[i].label2id),ds[i].label2id,device) for i in range(len(ds))])
+
+        self.dropout=nn.Dropout(p=dropout_rate)
 
     def load_pre_word_vec(self,word_vec):
         '''
@@ -43,12 +45,18 @@ class MTL_BC(nn.Module):
         :return:
         '''
 
+        #batch_size * seq_len_char * c_emb_size
         char_embeddings_f=self.c_emb(input_char_ids_f)
         char_embeddings_b=self.c_emb(input_char_ids_b)
+
+        char_embeddings_f=self.dropout(char_embeddings_f)
+        char_embeddings_b=self.dropout(char_embeddings_b)
+
 
         #batch_size * seq_len_char * c_hiden_size
         char_lstm_out_f,_=self.c_lstm_f(char_embeddings_f)
         char_lstm_out_b,_=self.c_lstm_b(char_embeddings_b)
+
 
         sp=input_word_pos_f.shape
         input_word_pos_f=input_word_pos_f.unsqueeze(2).expand(sp[0],sp[1],self.c_hiden_size//2)
@@ -58,14 +66,21 @@ class MTL_BC(nn.Module):
         char_lstm_out_f=torch.gather(char_lstm_out_f,1,input_word_pos_f)
         char_lstm_out_b=torch.gather(char_lstm_out_b,1,input_word_pos_b)
 
+        char_lstm_out_f = self.dropout(char_lstm_out_f)
+        char_lstm_out_b = self.dropout(char_lstm_out_b)
+
         # batch_size * seq_len * w_emb_size
         word_embeddings = self.w_emb(input_word_ids)
+
+        word_embeddings=self.dropout(word_embeddings)
 
         #batch_size * seq_len * c_hiden_size+w_emb_size
         word_embeddings=torch.cat([char_lstm_out_f,char_lstm_out_b,word_embeddings],2)
 
         #batch_size * seq_len * w_hiden_size
         word_features,_=self.w_lstm(word_embeddings)
+
+        word_features=self.dropout(word_features)
 
         #batch_size * seq_len * tag_size_of_ds[i]
         scores=self.linear[ds_num](word_features)

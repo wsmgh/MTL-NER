@@ -39,16 +39,16 @@ def train():
         tem_dl={}
         for i in data.keys():
             tem_ds[i]=NerDataset(data[i])
-            tem_dl[i]=DataLoader(tem_ds[i], batch_size=32)
+            tem_dl[i]=DataLoader(tem_ds[i], batch_size=10)
 
         ds.append(tem_ds)
         dl.append(tem_dl)
 
     device = torch.device('cpu')
 
-    model = MTL_BC(len(vocab), len(char),w_emb_size=200,c_emb_size=200,w_hiden_size=300,c_hiden_size=600,ds=ds_info,device=device).to(device)
+    model = MTL_BC(len(vocab), len(char),w_emb_size=200,c_emb_size=30,w_hiden_size=300,c_hiden_size=600,ds=ds_info,device=device).to(device)
 
-    optim = torch.optim.Adam(model.parameters())
+    optim = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.05)
 
     tem={}
     for i in range(len(dataset_name)):
