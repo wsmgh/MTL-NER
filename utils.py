@@ -2,6 +2,7 @@ import torch
 from data import *
 from collections import namedtuple
 import os
+import numpy as np
 
 def read_data(fpath=''):
     data=[]
@@ -33,7 +34,7 @@ def tokenize(batch,label2id,word2id,char2id,device):
     maxl=-1
     maxl_char=-1
     for i in range(len(seqs)):
-        word_ids.append([word2id[w] for w in seqs[i].split()])
+        word_ids.append([word2id[w] for w in seqs[i].lower().split()])
         label_ids.append([label2id[t] for t in labels[i].split()])
         length=len(word_ids[-1])
         maxl = max(maxl, length)
@@ -112,11 +113,15 @@ def next_items_of_iterators(iter_list=[]):
             ls.add(i)
     return ls,items
 
-def collect_words(data=[]):
-    vocab=set({})
+def collect_words(data=[],unique=True):
+    vocab=[]
     for item in data:
-        vocab=vocab.union(item.split())
-    return list(vocab)
+        vocab+=item.split()
+
+    if unique:
+        vocab=list(set(vocab))
+
+    return vocab
 
 def collect_chars(data=[]):
     chars=set({' '})
@@ -171,11 +176,104 @@ def get_tag_id(labels=[],label2id={}):
     return torch.tensor(ids)
 
 
+def load_embedding_wlm(emb_file, delimiter, feature_map, full_feature_set, caseless, unk,pad, emb_len,
+                       shrink_to_train=False, shrink_to_corpus=False):
+    """
+    load embedding, indoc words would be listed before outdoc words
 
+    args:
+        emb_file: path to embedding file
+        delimiter: delimiter of lines
+        feature_map: word dictionary
+        full_feature_set: all words in the corpus
+        caseless: convert into casesless style
+        unk: string for unknown token
+        emb_len: dimension of embedding vectors
+        shrink: whether to shrink out-of-training set or not
+        shrink: whether to shrink out-of-corpus or not
+    """
+    if caseless:
+        feature_set = set([key.lower() for key in feature_map])
+        full_feature_set = set([key.lower() for key in full_feature_set])
+    else:
+        feature_set = set([key for key in feature_map])
+        full_feature_set = set([key for key in full_feature_set])
+
+    # ensure <unk> is 0
+    word_dict = {v: (k + 1) for (k, v) in enumerate(feature_set - set([unk]))}
+    word_dict[unk] = 0
+
+    in_doc_freq_num = len(word_dict)
+    rand_embedding_tensor = torch.FloatTensor(in_doc_freq_num, emb_len)
+    # init_embedding(rand_embedding_tensor)
+
+    indoc_embedding_array = list()
+    indoc_word_array = list()
+    outdoc_embedding_array = list()
+    outdoc_word_array = list()
+
+    ct=0
+
+    with open(emb_file, 'rb') as f:
+        word_count, vec_size = map(int, f.readline().split(delimiter))
+        print("word_count: ", word_count, "vec_size: ", vec_size)
+
+        for i in range(word_count):
+            word = b''.join(iter(lambda: f.read(1),delimiter))
+            word = word.decode('utf-8').lstrip('\n')
+            vector = np.fromfile(f, np.float32, vec_size)
+
+            if shrink_to_train and word not in feature_set:
+                continue
+
+            if word == unk:
+                rand_embedding_tensor[0] = torch.FloatTensor(vector)  # unk is 0
+            elif word in word_dict:
+                rand_embedding_tensor[word_dict[word]] = torch.FloatTensor(vector)
+            elif word in full_feature_set:
+                indoc_embedding_array.append(vector)
+                indoc_word_array.append(word)
+            elif not shrink_to_corpus:
+                outdoc_word_array.append(word)
+                outdoc_embedding_array.append(vector)
+
+
+            ct+=1
+            if ct>5:
+                break
+
+
+    embedding_tensor_0 = torch.FloatTensor(np.asarray(indoc_embedding_array))
+
+    if not shrink_to_corpus:
+        embedding_tensor_1 = torch.FloatTensor(np.asarray(outdoc_embedding_array))
+        # word_emb_len = embedding_tensor_0.size(1)
+        # assert (word_emb_len == emb_len)
+
+    if shrink_to_corpus:
+        embedding_tensor = torch.cat([rand_embedding_tensor, embedding_tensor_0], 0)
+    else:
+        embedding_tensor = torch.cat([rand_embedding_tensor, embedding_tensor_0, embedding_tensor_1], 0)
+
+    for word in indoc_word_array:
+        word_dict[word] = len(word_dict)
+    in_doc_num = len(word_dict)
+    if not shrink_to_corpus:
+        for word in outdoc_word_array:
+            word_dict[word] = len(word_dict)
+
+    print(embedding_tensor)
+    print(word_dict)
+
+    embedding_tensor=torch.cat([embedding_tensor,embedding_tensor[0].reshape(1,-1)],dim=0)
+    word_dict[pad]=0
+    word_dict[unk]=embedding_tensor.shape[1]-1
+
+    return word_dict, embedding_tensor, in_doc_num
 
 
 if __name__=='__main__':
-    name,data=load_data('./data')
+    word2id,word_emb,in_doc_num=load_embedding_wlm('./word_vec/wikipedia-pubmed-and-PMC-w2v.bin',b' ',{'the':0},set({}),True,'<unk>','<pad>',200)
     print('done')
 
 

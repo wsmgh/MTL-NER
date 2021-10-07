@@ -30,7 +30,7 @@ class MTL_BC(nn.Module):
         :param word_vec:
         :return:
         '''
-        self.w_emb=nn.Parameter(word_vec)
+        self.w_emb=nn.Embedding.from_pretrained(word_vec,freeze=False)
 
     def forward(self,input_word_ids,input_char_ids_f,input_word_pos_f,
                      input_char_ids_b,input_word_pos_b,ds_num):
