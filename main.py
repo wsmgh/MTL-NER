@@ -119,7 +119,7 @@ def train():
 
                 loss_batch[i].append(loss.item())
 
-                pbar.set_postfix_str(dataset_name[i]+'-f1='+f1_batch[i][-1])
+                pbar.set_postfix_str(dataset_name[i]+'-f1='+str(f1_batch[i][-1]))
 
 
                 
@@ -156,7 +156,8 @@ def train():
                 f1_batch[i].append(torch.mean(f1s).item())
 
                 loss_batch[i].append(loss.item())
-                
+
+                pbar.set_postfix_str(dataset_name[i] + '-f1=' + str(f1_batch[i][-1]))
 
 
 

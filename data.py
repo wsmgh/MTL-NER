@@ -47,3 +47,34 @@ class DataPacker:
 
     def __len__(self):
         return self.length
+
+if __name__=='__main__':
+    dataset_name, datas = load_data('./data')
+
+    # 创建dataset对象和dataloader对象
+    ds, dl = [], []
+
+    for data in datas:
+        tem_ds = {}
+        tem_dl = {}
+        for i in data.keys():
+            tem_ds[i] = NerDataset(data[i])
+            tem_dl[i] = DataLoader(tem_ds[i], batch_size=32)
+
+        ds.append(tem_ds)
+        dl.append(tem_dl)
+
+    it_train, it_devel, it_test = [], [], []
+    for d in dl:
+        for k in d.keys():
+            if k == 'train':
+                it_train.append(d[k])
+            elif k == 'devel':
+                it_devel.append(d[k])
+            elif k == 'test':
+                it_test.append(d[k])
+
+    dpacker = DataPacker(it_train)
+
+    for d,i in tqdm(dpacker):
+        pass
