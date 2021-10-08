@@ -17,8 +17,8 @@ def train():
         vocab += collect_words(list(map(lambda x: x[0], data['train']+data['devel']+data['test'])),unique=False)
 
     print('filter rare words')
-    #去掉低频词(词频大于5)
-    vocab=list(filter(lambda x:vocab.count(x)>5,tqdm(set(vocab))))
+    #去掉低频词(词频小于5)
+    vocab=rare_word_filter(vocab,5)
     
 
     word2id = {w: i for i, w in enumerate(vocab)}

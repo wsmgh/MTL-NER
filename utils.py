@@ -1,6 +1,7 @@
 import torch
 from data import *
 from collections import namedtuple
+from collections import Counter
 import os
 import numpy as np
 from tqdm import tqdm
@@ -113,6 +114,11 @@ def next_items_of_iterators(iter_list=[]):
         if items[i] is not None:
             ls.add(i)
     return ls,items
+
+def rare_word_filter(vocab=[],min_freq=0):
+
+    d=Counter(vocab)
+    return list(filter(lambda x:d[x]>=min_freq,d))
 
 def collect_words(data=[],unique=True):
     vocab=[]
@@ -269,8 +275,10 @@ def load_embedding_wlm(emb_file, delimiter, feature_map, full_feature_set, casel
     return word_dict, embedding_tensor, in_doc_num
 
 
+
 if __name__=='__main__':
-    word2id,word_emb,in_doc_num=load_embedding_wlm('./word_vec/wikipedia-pubmed-and-PMC-w2v.bin',b' ',{'the':0},set({}),True,'<unk>','<pad>',200)
-    print('done')
+    # word2id,word_emb,in_doc_num=load_embedding_wlm('./word_vec/wikipedia-pubmed-and-PMC-w2v.bin',b' ',{'the':0},set({}),True,'<unk>','<pad>',200)
+    # print('done')
 
-
+    a=rare_word_filter(['a','a','a','b','c'],2)
+    print(a)
