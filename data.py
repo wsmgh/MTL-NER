@@ -33,6 +33,10 @@ class DataPacker:
         return self
 
     def __next__(self):
+
+        if len(self.ls)==0:
+            raise StopIteration
+
         random.shuffle(self.ls)
         id=self.ls[0]
         batch=self.batchs[id]
