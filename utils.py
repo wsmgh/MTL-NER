@@ -108,12 +108,12 @@ def my_next(it):
     return ans
 
 def next_items_of_iterators(iter_list=[]):
-    ls = set({})
+    ls = []
     items = {}
     for i in range(len(iter_list)):
         items[i] = my_next(iter_list[i])
         if items[i] is not None:
-            ls.add(i)
+            ls.append(i)
     return ls,items
 
 def rare_word_filter(vocab=[],min_freq=0):

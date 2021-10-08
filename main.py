@@ -96,44 +96,32 @@ def train():
         loss_batch, acc_batch, f1_batch = copy.deepcopy(tem), copy.deepcopy(tem), copy.deepcopy(tem)
 
         with tqdm(dpacker,desc='epoch %d/%d training'%(epoch,tot_epoch)) as pbar:
-            for ls,batchs in pbar:
+            for mini_batch,i in pbar:
 
                 # 训练一个大batch（由来自各个数据集的小batch组成）
-                for i in ls:
 
-                    if i!=11:
-                        continue
+                batch = tokenize(mini_batch, ds_info[i].label2id, word2id, char2id, device)
 
-                    batch = tokenize(batchs[i], ds_info[i].label2id, word2id, char2id, device)
-
-                    loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
+                loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
                                               , batch['char_ids_b'], batch['word_pos_b'], batch['label_ids']
                                               , batch['lens'], i)
 
-                    optim.zero_grad()
-                    loss.backward()
-                    optim.step()
+                optim.zero_grad()
+                loss.backward()
+                optim.step()
 
-                    labels=get_tag_id(labels,ds_info[i].label2id)
+                labels=get_tag_id(labels,ds_info[i].label2id)
 
-                    acc_batch[i].append(acc(batch['label_ids'],labels,batch['lens']))
+                acc_batch[i].append(acc(batch['label_ids'],labels,batch['lens']))
 
-                    f1s=f_score(batch['label_ids'],labels,len(ds_info[i].label2id)-3,batch['lens'])
-                    f1_batch[i].append(torch.mean(f1s).item())
+                f1s=f_score(batch['label_ids'],labels,len(ds_info[i].label2id)-3,batch['lens'])
+                f1_batch[i].append(torch.mean(f1s).item())
 
-                    loss_batch[i].append(loss.item())
+                loss_batch[i].append(loss.item())
 
-                #更新进度条
-                '''
-                average_f1,average_acc=0,0
-                for k in f1_batch.keys():
-                    average_f1+=f1_batch[k][-1]
-                    average_acc+=acc_batch[k][-1]
-                average_acc/=len(acc_batch)
-                average_f1/=len(f1_batch)
-                pbar.set_postfix({'average_f1_batch':average_f1,'averge_acc_batch':average_acc})
-                '''
-                pbar.set_postfix({'average_f1_batch':f1_batch[11][-1],'averge_acc_batch':acc_batch[11][-1]})
+                pbar.set_postfix_str(dataset_name[i]+'-f1='+f1_batch[i][-1])
+
+
                 
 
         for k in loss_batch.keys():
@@ -151,39 +139,26 @@ def train():
         loss_batch, acc_batch, f1_batch = copy.deepcopy(tem), copy.deepcopy(tem), copy.deepcopy(tem)
 
         with tqdm(dpacker,desc='epoch %d/%d validating'%(epoch,tot_epoch)) as pbar:
-            for ls,batchs in tqdm(dpacker):
+            for mini_batch,i in pbar:
 
-                for i in ls:
 
-                    if i!=11:
-                        continue
+                batch = tokenize(mini_batch, ds_info[i].label2id, word2id, char2id, device)
 
-                    batch = tokenize(batchs[i], ds_info[i].label2id, word2id, char2id, device)
+                loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
+                                          , batch['char_ids_b'], batch['word_pos_b'], batch['label_ids']
+                                          , batch['lens'], i)
 
-                    loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
-                                              , batch['char_ids_b'], batch['word_pos_b'], batch['label_ids']
-                                              , batch['lens'], i)
+                labels = get_tag_id(labels, ds_info[i].label2id)
 
-                    labels = get_tag_id(labels, ds_info[i].label2id)
+                acc_batch[i].append(acc(batch['label_ids'], labels, batch['lens']))
 
-                    acc_batch[i].append(acc(batch['label_ids'], labels, batch['lens']))
+                f1s = f_score(batch['label_ids'], labels, len(ds_info[i].label2id) - 3, batch['lens'])
+                f1_batch[i].append(torch.mean(f1s).item())
 
-                    f1s = f_score(batch['label_ids'], labels, len(ds_info[i].label2id) - 3, batch['lens'])
-                    f1_batch[i].append(torch.mean(f1s).item())
-
-                    loss_batch[i].append(loss.item())
+                loss_batch[i].append(loss.item())
                 
-                '''
-                #更新进度条
-                average_f1,average_acc=0,0
-                for k in f1_batch.keys():
-                    average_f1+=f1_batch[k][-1]
-                    average_acc+=acc_batch[k][-1]
-                average_acc/=len(acc_batch)
-                average_f1/=len(f1_batch)
-                pbar.set_postfix({'average_f1_batch':average_f1,'averge_acc_batch':average_acc})
-                '''
-                pbar.set_postfix({'average_f1_batch':f1_batch[11][-1],'averge_acc_batch':acc_batch[11][-1]})
+
+
 
         for k in loss_batch.keys():
             devel_loss[k].append(torch.mean(torch.tensor(loss_batch[k])).item())
