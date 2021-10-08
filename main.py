@@ -19,7 +19,7 @@ def train():
     print('filter rare words')
     #去掉低频词(词频小于5)
     vocab=rare_word_filter(vocab,5)
-    
+    #vocab=['<pad>']+vocab+['<unk>'] 
 
     word2id = {w: i for i, w in enumerate(vocab)}
 
@@ -43,7 +43,7 @@ def train():
         tem_dl={}
         for i in data.keys():
             tem_ds[i]=NerDataset(data[i])
-            tem_dl[i]=DataLoader(tem_ds[i], batch_size=10)
+            tem_dl[i]=DataLoader(tem_ds[i], batch_size=32)
 
         ds.append(tem_ds)
         dl.append(tem_dl)
@@ -60,7 +60,8 @@ def train():
 
     model.load_pre_word_vec(pre_word_emb)
 
-    optim = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.05)
+    #optim = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.05)
+    optim = torch.optim.Adam(model.parameters())
 
     tem={}
     for i in range(len(dataset_name)):
@@ -99,6 +100,10 @@ def train():
 
                 # 训练一个大batch（由来自各个数据集的小batch组成）
                 for i in ls:
+
+                    if i!=11:
+                        continue
+
                     batch = tokenize(batchs[i], ds_info[i].label2id, word2id, char2id, device)
 
                     loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
@@ -119,6 +124,7 @@ def train():
                     loss_batch[i].append(loss.item())
 
                 #更新进度条
+                '''
                 average_f1,average_acc=0,0
                 for k in f1_batch.keys():
                     average_f1+=f1_batch[k][-1]
@@ -126,7 +132,9 @@ def train():
                 average_acc/=len(acc_batch)
                 average_f1/=len(f1_batch)
                 pbar.set_postfix({'average_f1_batch':average_f1,'averge_acc_batch':average_acc})
-
+                '''
+                pbar.set_postfix({'average_f1_batch':f1_batch[11][-1],'averge_acc_batch':acc_batch[11][-1]})
+                
 
         for k in loss_batch.keys():
             train_loss[k].append(torch.mean(torch.tensor(loss_batch[k])).item())
@@ -146,6 +154,10 @@ def train():
             for ls,batchs in tqdm(dpacker):
 
                 for i in ls:
+
+                    if i!=11:
+                        continue
+
                     batch = tokenize(batchs[i], ds_info[i].label2id, word2id, char2id, device)
 
                     loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']
@@ -160,7 +172,8 @@ def train():
                     f1_batch[i].append(torch.mean(f1s).item())
 
                     loss_batch[i].append(loss.item())
-
+                
+                '''
                 #更新进度条
                 average_f1,average_acc=0,0
                 for k in f1_batch.keys():
@@ -169,7 +182,8 @@ def train():
                 average_acc/=len(acc_batch)
                 average_f1/=len(f1_batch)
                 pbar.set_postfix({'average_f1_batch':average_f1,'averge_acc_batch':average_acc})
-
+                '''
+                pbar.set_postfix({'average_f1_batch':f1_batch[11][-1],'averge_acc_batch':acc_batch[11][-1]})
 
         for k in loss_batch.keys():
             devel_loss[k].append(torch.mean(torch.tensor(loss_batch[k])).item())

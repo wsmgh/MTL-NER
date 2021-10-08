@@ -35,8 +35,9 @@ def tokenize(batch,label2id,word2id,char2id,device):
     lens=[]
     maxl=-1
     maxl_char=-1
+    l=len(word2id)-1
     for i in range(len(seqs)):
-        word_ids.append([word2id[w] for w in seqs[i].lower().split()])
+        word_ids.append([word2id.get(w,l) for w in seqs[i].lower().split()])
         label_ids.append([label2id[t] for t in labels[i].split()])
         length=len(word_ids[-1])
         maxl = max(maxl, length)
@@ -250,8 +251,8 @@ def load_embedding_wlm(emb_file, delimiter, feature_map, full_feature_set, casel
 
     if not shrink_to_corpus:
         embedding_tensor_1 = torch.FloatTensor(np.asarray(outdoc_embedding_array))
-        word_emb_len = embedding_tensor_0.size(1)
-        assert (word_emb_len == emb_len)
+        #word_emb_len = embedding_tensor_0.size(1)
+        #assert (word_emb_len == emb_len)
 
     if shrink_to_corpus:
         embedding_tensor = torch.cat([rand_embedding_tensor, embedding_tensor_0], 0)
@@ -265,8 +266,6 @@ def load_embedding_wlm(emb_file, delimiter, feature_map, full_feature_set, casel
         for word in outdoc_word_array:
             word_dict[word] = len(word_dict)
 
-    print(embedding_tensor)
-    print(word_dict)
 
     embedding_tensor=torch.cat([embedding_tensor,embedding_tensor[0].reshape(1,-1)],dim=0)
     word_dict[pad]=0
