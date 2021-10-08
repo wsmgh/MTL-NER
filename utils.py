@@ -3,6 +3,7 @@ from data import *
 from collections import namedtuple
 import os
 import numpy as np
+from tqdm import tqdm
 
 def read_data(fpath=''):
     data=[]
@@ -212,13 +213,12 @@ def load_embedding_wlm(emb_file, delimiter, feature_map, full_feature_set, casel
     outdoc_embedding_array = list()
     outdoc_word_array = list()
 
-    ct=0
 
     with open(emb_file, 'rb') as f:
         word_count, vec_size = map(int, f.readline().split(delimiter))
         print("word_count: ", word_count, "vec_size: ", vec_size)
 
-        for i in range(word_count):
+        for i in tqdm(range(word_count)):
             word = b''.join(iter(lambda: f.read(1),delimiter))
             word = word.decode('utf-8').lstrip('\n')
             vector = np.fromfile(f, np.float32, vec_size)
@@ -238,17 +238,14 @@ def load_embedding_wlm(emb_file, delimiter, feature_map, full_feature_set, casel
                 outdoc_embedding_array.append(vector)
 
 
-            ct+=1
-            if ct>5:
-                break
 
 
     embedding_tensor_0 = torch.FloatTensor(np.asarray(indoc_embedding_array))
 
     if not shrink_to_corpus:
         embedding_tensor_1 = torch.FloatTensor(np.asarray(outdoc_embedding_array))
-        # word_emb_len = embedding_tensor_0.size(1)
-        # assert (word_emb_len == emb_len)
+        word_emb_len = embedding_tensor_0.size(1)
+        assert (word_emb_len == emb_len)
 
     if shrink_to_corpus:
         embedding_tensor = torch.cat([rand_embedding_tensor, embedding_tensor_0], 0)

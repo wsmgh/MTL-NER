@@ -9,14 +9,17 @@ import copy
 
 def train():
 
+    print('loading datas')
     dataset_name,datas=load_data('./data')
 
     vocab = []
     for data in datas:
         vocab += collect_words(list(map(lambda x: x[0], data['train']+data['devel']+data['test'])),unique=False)
 
+    print('filter rare words')
     #去掉低频词(词频大于5)
-    vocab=list(filter(lambda x:vocab.count(x)>5,set(vocab)))
+    vocab=list(filter(lambda x:vocab.count(x)>5,tqdm(set(vocab))))
+    
 
     word2id = {w: i for i, w in enumerate(vocab)}
 
@@ -24,7 +27,8 @@ def train():
     char = ['<pad>'] + char
 
     char2id = {c: i for i, c in enumerate(char)}
-
+    
+    print('parsing dataset')
     # 获得不同数据集的标签
     ds_info = []
 
@@ -43,12 +47,14 @@ def train():
 
         ds.append(tem_ds)
         dl.append(tem_dl)
-
+    
+    print('load pre-train word vec')
     word2id,pre_word_emb,_=load_embedding_wlm('./word_vec/wikipedia-pubmed-and-PMC-w2v.bin',b' ',word2id,word2id.keys(),True,'<unk>','<pad>',200)
 
-    device = torch.device('cpu')
+    device = torch.device('cuda')
 
-    model = MTL_BC(len(vocab), len(char),w_emb_size=200,c_emb_size=30,w_hiden_size=300,c_hiden_size=600,dropout_rate=0.5,ds=ds_info,device=device).to(device)
+    print('building model')
+    model = MTL_BC(len(vocab), len(char),w_emb_size=200,c_emb_size=30,w_hiden_size=300,c_hiden_size=600,dropout_rate=0,ds=ds_info,device=device).to(device)
 
     pre_word_emb=pre_word_emb.to(device)
 
@@ -66,7 +72,8 @@ def train():
     devel_acc=copy.deepcopy(tem)
     train_f1=copy.deepcopy(tem)
     devel_f1=copy.deepcopy(tem)
-
+    
+    print('starting training loop')
     tot_epoch=100
     for epoch in range(tot_epoch):
 
@@ -176,6 +183,7 @@ def train():
 
     torch.save(model.state_dict(),'best-model.pt')
     print('done')
+    
 
 
 
