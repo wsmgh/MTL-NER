@@ -124,6 +124,7 @@ class CRF(nn.Module):
         '''
         self.device=device
         self.tagset_dic={t:i for i,t in enumerate(tagset+['<start>','<stop>'])}
+        self.id2tag={i:t for i,t in enumerate(tagset+['<start>','<stop>'])}
         self.tagset_size=len(self.tagset_dic)
         self.trans=nn.Parameter(torch.randn((self.tagset_size,self.tagset_size)),requires_grad=True)
 
@@ -220,7 +221,7 @@ class CRF(nn.Module):
                 path_record.append(max_score.indices)
 
             path_scores=path_scores+self.trans[:-2,-1]
-            max_score=torch.max(path_scores)
+            max_score=torch.max(path_scores,dim=0)
             scores_of_path.append(max_score.values.item())
 
 
@@ -229,7 +230,7 @@ class CRF(nn.Module):
             path_record.reverse()
             for record in path_record:
                 tag=record[tag]
-                path.append(self.tagset_dic[tag])
+                path.append(self.id2tag[tag])
             path.reverse()
             tags_of_path.append(path)
 
