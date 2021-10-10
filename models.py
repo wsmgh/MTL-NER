@@ -136,7 +136,7 @@ class CRF(nn.Module):
         :param lens: batch_size
         :return:
         '''
-        loss=self.log_exp_score_of_gold_label(gold_label,scores,lens)-self.log_exp_score_of_all_labels(scores,lens)
+        loss=self.log_exp_score_of_all_labels(scores,lens)-self.log_exp_score_of_gold_label(gold_label,scores,lens)
 
         return torch.mean(loss)
 
@@ -229,7 +229,7 @@ class CRF(nn.Module):
             path=[self.id2tag[tag]]
             path_record.reverse()
             for record in path_record:
-                tag=record[tag]
+                tag=record[tag].item()
                 path.append(self.id2tag[tag])
             path.reverse()
             tags_of_path.append(path)
