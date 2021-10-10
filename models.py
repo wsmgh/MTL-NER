@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from crf import CRF
 
 
 class MTL_BC(nn.Module):
@@ -20,7 +19,7 @@ class MTL_BC(nn.Module):
 
         self.linear=nn.ModuleList([nn.Linear(w_hiden_size,len(ds[i].label2id)) for i in range(len(ds))])
 
-        self.crf=nn.ModuleList([CRF(len(ds[i].label2id),ds[i].label2id,device) for i in range(len(ds))])
+        self.crf=nn.ModuleList([CRF(list(ds[i].label2id.keys())) for i in range(len(ds))])
 
         self.dropout=nn.Dropout(p=dropout_rate)
 
@@ -89,7 +88,7 @@ class MTL_BC(nn.Module):
 
 
     def forward_loss(self,input_word_ids,input_char_ids_f,input_word_pos_f,
-                          input_char_ids_b,input_word_pos_b,tags,lens,ds_num,need_predict=True):
+                          input_char_ids_b,input_word_pos_b,gold_label,lens,ds_num,need_predict=True):
         '''
         :param lens: bath_size
         其余同forward
@@ -97,11 +96,11 @@ class MTL_BC(nn.Module):
         '''
         scores=self.forward(input_word_ids,input_char_ids_f,input_word_pos_f,input_char_ids_b,input_word_pos_b,ds_num)
 
-        loss=self.crf[ds_num].calculate_loss(scores,tags,lens)
+        loss=self.crf[ds_num].calculate_loss(gold_label,scores,lens)
 
         if need_predict:
-            tags, _ = self.crf[ds_num]._obtain_labels(scores, self.ds[ds_num].id2label, lens)
-            return loss,tags
+            labels, _ = self.crf[ds_num].viterbi_decode(scores, lens)
+            return loss,labels
 
         return loss
 
@@ -109,8 +108,142 @@ class MTL_BC(nn.Module):
     def predict(self,input_word_ids,input_char_ids_f,input_word_pos_f,
                      input_char_ids_b,input_word_pos_b,lens,ds_num):
         scores = self.forward(input_word_ids, input_char_ids_f, input_word_pos_f, input_char_ids_b, input_word_pos_b,ds_num)
-        tags,_=self.crf[ds_num]._obtain_labels(scores,self.ds[ds_num].id2label,lens)
-        return tags
+        labels, _ = self.crf[ds_num].viterbi_decode(scores, lens)
+        return labels
+
+
+
+
+
+class CRF(nn.Module):
+
+    def __init__(self,tagset):
+        '''
+        :param tagset: list of all tags
+        '''
+        self.tagset_dic={t:i for i,t in enumerate(tagset+['<start>','<stop>'])}
+        self.tagset_size=len(self.tagset_dic)
+        self.trans=nn.Parameter(torch.randn((self.tagset_size,self.tagset_size)),requires_grad=True)
+
+
+    def calculate_loss(self,gold_label,scores,lens):
+        '''
+        :param gold_label: batch_size * seq_len
+        :param scores: batch_size * seq_len * tagset_size
+        :param lens: batch_size
+        :return:
+        '''
+        loss=self.log_exp_score_of_gold_label(gold_label,scores,lens)-self.log_exp_score_of_all_labels(scores,lens)
+
+        return torch.mean(loss)
+
+
+
+    def log_exp_score_of_gold_label(self,gold_label,scores,lens):
+        '''
+        :param gold_label: batch_size * seq_len
+        :param scores: batch_size * seq_len * tagset_size
+        :param lens: batch_size
+        :return: log_exp_scores : batch_size
+        '''
+        # add <start> and <stop>
+        start_tag=torch.LongTensor([self.tagset_dic['<start>']]).repeat(gold_label.shape[0],1)
+        gold_label=torch.cat([start_tag,gold_label,start_tag],dim=1)
+        for i in range(gold_label.shape[0]):
+            gold_label[i][lens[i]+1]=self.tagset_dic['<stop>']
+
+        log_exp_scores=[]
+        for i in range(gold_label.shape[0]):
+            gl=gold_label[i,:lens[i]+2]
+            e=torch.sum(torch.gather(scores[i,:lens[i]],1,gl[1:lens[i]+1]))
+            t=torch.sum(self.trans[gl[:lens[i]+1],gl[1:lens[i]+2]])
+            log_exp_scores.append((e+t).item())
+
+        return log_exp_scores
+
+
+
+    def log_exp_score_of_all_labels(self,scores,lens):
+        '''
+        :param scores: batch_size * seq_len * tagset_size
+        :param lens: batch_size
+        :return: log_exp_score_of_all_labels : batch_size
+        '''
+
+        log_exp_scores=[]
+
+        for i in range(scores.shape[0]):
+
+            pre = scores[i][0]+self.trans[-2,:-2]
+
+            for j in range(lens[i]):
+                tem_pre=pre.unsqueeze(0).expand(self.tagset_size-2,self.tagset_size-2)
+                e=scores[i][j].unsqueeze(1).expand(self.tagset_size-2,self.tagset_size-2)
+                t=torch.transpose(self.trans[:-2,:-2],0,1)
+                pre=self.log_sum_exp(tem_pre+e+t)
+
+            pre=(pre+self.trans[:-2,-1]).unsqueeze(0)
+            log_exp_scores.append(self.log_sum_exp(pre).item())
+
+        return torch.tensor(log_exp_scores)
+
+
+
+    def viterbi_decode(self,scores,lens):
+        '''
+        :param scores: batch_size * seq_len * tagset_size
+        :param lens: batch_size
+        :return:
+        '''
+
+        tags_of_path=[]
+        scores_of_path=[]
+
+        for i in range(scores.shape[0]):
+            #tagset_size
+            path_scores=scores[i][0]+self.trans[-2,:-2]
+            ts=path_scores.shape[0]
+            path_record=[]
+            for j in range(1,lens[i]):
+                #tagset_size * tagset_size
+                tem_scores=path_scores.unsqueeze(0).expand(ts,ts)
+                t=torch.transpose(self.trans[:-2,:-2],0,1)
+                e=scores[i][j].unsqueeze(1).expand(ts,ts)
+                tem_scores=tem_scores+t+e
+                path_scores=torch.max(tem_scores,dim=1)
+                path_record.append(torch.argmax(tem_scores,dim=1))
+
+            path_scores=path_scores+self.trans[:-2,-1]
+            s=torch.max(path_scores)
+
+            tag=torch.argmax(path_scores,dim=0).item()
+            path=[self.tagset_dic[tag]]
+            path_record.reverse()
+            for record in path_record:
+                tag=record[tag]
+                path.append(self.tagset_dic[tag])
+
+            path.reverse()
+
+            tags_of_path.append(path)
+            scores_of_path.append(s.item())
+
+        return tags_of_path,scores_of_path
+
+
+    def log_sum_exp(self,x):
+        '''
+        :param x: m * n
+        :return: log_sum_exp of each row : m
+        '''
+
+        return torch.log(torch.sum(torch.exp(x),dim=1))
+
+
+
+
+
+
 
 
 if __name__=='__main__':
