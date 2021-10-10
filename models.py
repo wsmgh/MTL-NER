@@ -19,7 +19,7 @@ class MTL_BC(nn.Module):
 
         self.linear=nn.ModuleList([nn.Linear(w_hiden_size,len(ds[i].label2id)) for i in range(len(ds))])
 
-        self.crf=nn.ModuleList([CRF(list(ds[i].label2id.keys())) for i in range(len(ds))])
+        self.crf=nn.ModuleList([CRF(list(ds[i].label2id.keys()),device) for i in range(len(ds))])
 
         self.dropout=nn.Dropout(p=dropout_rate)
 
@@ -117,11 +117,12 @@ class MTL_BC(nn.Module):
 
 class CRF(nn.Module):
 
-    def __init__(self,tagset):
+    def __init__(self,tagset,device):
         super(CRF, self).__init__()
         '''
         :param tagset: list of all tags
         '''
+        self.device=device
         self.tagset_dic={t:i for i,t in enumerate(tagset+['<start>','<stop>'])}
         self.tagset_size=len(self.tagset_dic)
         self.trans=nn.Parameter(torch.randn((self.tagset_size,self.tagset_size)),requires_grad=True)
@@ -139,7 +140,6 @@ class CRF(nn.Module):
         return torch.mean(loss)
 
 
-
     def log_exp_score_of_gold_label(self,gold_label,scores,lens):
         '''
         :param gold_label: batch_size * seq_len
@@ -148,7 +148,8 @@ class CRF(nn.Module):
         :return: log_exp_scores : batch_size
         '''
         # add <start> and <stop>
-        start_tag=torch.LongTensor([self.tagset_dic['<start>']]).repeat(gold_label.shape[0],1)
+        # batch_size * 1
+        start_tag=torch.LongTensor([self.tagset_dic['<start>']]).repeat(gold_label.shape[0],1).to(self.device)
         gold_label=torch.cat([start_tag,gold_label,start_tag],dim=1)
         for i in range(gold_label.shape[0]):
             gold_label[i][lens[i]+1]=self.tagset_dic['<stop>']
@@ -156,11 +157,12 @@ class CRF(nn.Module):
         log_exp_scores=[]
         for i in range(gold_label.shape[0]):
             gl=gold_label[i,:lens[i]+2]
-            e=torch.sum(torch.gather(scores[i,:lens[i]],1,gl[1:lens[i]+1]))
+            idx=gl[1:lens[i]+1].unsqueeze(1)
+            e=torch.sum(torch.gather(scores[i,:lens[i]],1,idx))
             t=torch.sum(self.trans[gl[:lens[i]+1],gl[1:lens[i]+2]])
             log_exp_scores.append((e+t).item())
 
-        return log_exp_scores
+        return torch.tensor(log_exp_scores)
 
 
 
@@ -211,23 +213,26 @@ class CRF(nn.Module):
                 t=torch.transpose(self.trans[:-2,:-2],0,1)
                 e=scores[i][j].unsqueeze(1).expand(ts,ts)
                 tem_scores=tem_scores+t+e
-                path_scores=torch.max(tem_scores,dim=1)
-                path_record.append(torch.argmax(tem_scores,dim=1))
+
+                max_score=torch.max(tem_scores,dim=1)
+
+                path_scores=max_score.values
+                path_record.append(max_score.indices)
 
             path_scores=path_scores+self.trans[:-2,-1]
-            s=torch.max(path_scores)
+            max_score=torch.max(path_scores)
+            scores_of_path.append(max_score.values.item())
 
-            tag=torch.argmax(path_scores,dim=0).item()
+
+            tag=max_score.indices.item()
             path=[self.tagset_dic[tag]]
             path_record.reverse()
             for record in path_record:
                 tag=record[tag]
                 path.append(self.tagset_dic[tag])
-
             path.reverse()
-
             tags_of_path.append(path)
-            scores_of_path.append(s.item())
+
 
         return tags_of_path,scores_of_path
 
