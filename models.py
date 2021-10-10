@@ -118,6 +118,7 @@ class MTL_BC(nn.Module):
 class CRF(nn.Module):
 
     def __init__(self,tagset):
+        super(CRF, self).__init__()
         '''
         :param tagset: list of all tags
         '''

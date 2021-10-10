@@ -139,7 +139,7 @@ def collect_chars(data=[]):
 
 def get_dataset_info(data=[]):
     DataSetInfo = namedtuple('DataSet', 'id2label label2id')
-    tagset=['<pad>']+collect_words(list(map(lambda x:x[1],data)))+['<STOP>','<START>']
+    tagset=collect_words(list(map(lambda x:x[1],data)))
     label2id = {w: i for i, w in enumerate(tagset)}
     id2label = {i: w for i, w in enumerate(tagset)}
     dsi=DataSetInfo(id2label,label2id)
