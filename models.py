@@ -155,15 +155,15 @@ class CRF(nn.Module):
         for i in range(gold_label.shape[0]):
             gold_label[i][lens[i]+1]=self.tagset_dic['<stop>']
 
-        log_exp_scores=[]
+        log_exp_scores=torch.FloatTensor(gold_label.shape[0])
         for i in range(gold_label.shape[0]):
             gl=gold_label[i,:lens[i]+2]
             idx=gl[1:lens[i]+1].unsqueeze(1)
             e=torch.sum(torch.gather(scores[i,:lens[i]],1,idx))
             t=torch.sum(self.trans[gl[:lens[i]+1],gl[1:lens[i]+2]])
-            log_exp_scores.append((e+t).item())
+            log_exp_scores[i]=e+t
 
-        return torch.tensor(log_exp_scores)
+        return log_exp_scores
 
 
 
@@ -174,7 +174,7 @@ class CRF(nn.Module):
         :return: log_exp_score_of_all_labels : batch_size
         '''
 
-        log_exp_scores=[]
+        log_exp_scores=torch.FloatTensor(scores.shape[0])
 
         for i in range(scores.shape[0]):
 
@@ -187,9 +187,9 @@ class CRF(nn.Module):
                 pre=self.log_sum_exp(tem_pre+e+t)
 
             pre=(pre+self.trans[:-2,-1]).unsqueeze(0)
-            log_exp_scores.append(self.log_sum_exp(pre).item())
+            log_exp_scores[i]=self.log_sum_exp(pre)
 
-        return torch.tensor(log_exp_scores)
+        return log_exp_scores
 
 
 
