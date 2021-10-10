@@ -4,12 +4,11 @@ def statistic(x, y, c,lens):
     '''
     x:真实类别标签
     y:预测类别标签
-    x,y中的类别标签从1开始编号，0用于padding
     x,y shape: batch_size * seq_len
     c:类别的数量
     '''
     result = []
-    for i in range(1,c+1):
+    for i in range(c):
 
         tp,fp,tn,fn=0,0,0,0
 
@@ -40,7 +39,6 @@ def f_score(x, y, c,lens, b=1,epsilon=1e-10):
     '''
         x:真实类别标签
         y:预测类别标签
-        x,y中的类别标签从1开始编号，0用于padding
         x,y shape: 只要x,y的形状一样即可
         c:类别的数量
         epsilon:防止除零而设的小常数

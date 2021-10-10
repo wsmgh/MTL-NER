@@ -114,7 +114,7 @@ def train():
 
                 acc_batch[i].append(acc(batch['label_ids'],labels,batch['lens']))
 
-                f1s=f_score(batch['label_ids'],labels,len(ds_info[i].label2id)-3,batch['lens'])
+                f1s=f_score(batch['label_ids'],labels,len(ds_info[i].label2id),batch['lens'])
                 f1_batch[i].append(torch.mean(f1s).item())
 
                 loss_batch[i].append(loss.item())
@@ -152,7 +152,7 @@ def train():
 
                 acc_batch[i].append(acc(batch['label_ids'], labels, batch['lens']))
 
-                f1s = f_score(batch['label_ids'], labels, len(ds_info[i].label2id) - 3, batch['lens'])
+                f1s = f_score(batch['label_ids'], labels, len(ds_info[i].label2id) , batch['lens'])
                 f1_batch[i].append(torch.mean(f1s).item())
 
                 loss_batch[i].append(loss.item())
