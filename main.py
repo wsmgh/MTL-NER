@@ -6,6 +6,7 @@ from tqdm import tqdm
 from models import MTL_BC
 from metrics import *
 import copy
+import os
 
 def train():
 
@@ -59,6 +60,10 @@ def train():
     pre_word_emb=pre_word_emb.to(device)
 
     model.load_pre_word_vec(pre_word_emb)
+
+    if os.path.exists('best-model.pt'):
+        print('loading parameters from checkpoint')
+        model.load_state_dict(torch.load('best-model.pt'))
 
     #optim = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.05)
     optim = torch.optim.Adam(model.parameters())

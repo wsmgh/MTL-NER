@@ -243,9 +243,12 @@ class CRF(nn.Module):
         :param x: m * n
         :return: log_sum_exp of each row : m
         '''
+        '''
         max_values=torch.max(x,dim=1).values
         max_values_batch=max_values[:,None].repeat(1,x.shape[1])
         return max_values+torch.log(torch.sum(torch.exp(x-max_values_batch),dim=1))
+        '''
+        return torch.log(torch.sum(torch.exp(x), dim=1))
 
 
 
