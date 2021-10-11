@@ -184,6 +184,15 @@ def get_tag_id(labels=[],label2id={}):
     return torch.tensor(ids)
 
 
+
+def save_result(file='',data={}):
+    with open(file,'w') as f:
+        for k in data:
+            f.write(' '.join([str(i) for i in data[k]])+'\n')
+
+
+
+
 def load_embedding_wlm(emb_file, delimiter, feature_map, full_feature_set, caseless, unk,pad, emb_len,
                        shrink_to_train=False, shrink_to_corpus=False):
     """
@@ -276,8 +285,6 @@ def load_embedding_wlm(emb_file, delimiter, feature_map, full_feature_set, casel
 
 
 if __name__=='__main__':
-    # word2id,word_emb,in_doc_num=load_embedding_wlm('./word_vec/wikipedia-pubmed-and-PMC-w2v.bin',b' ',{'the':0},set({}),True,'<unk>','<pad>',200)
-    # print('done')
 
-    a=rare_word_filter(['a','a','a','b','c'],2)
-    print(a)
+    d={0:[0,0,0,0,0,4],1:[1,1,1,1,1,4],2:[2,2,2,2,2,4]}
+    save_result('t.txt',d)

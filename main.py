@@ -75,6 +75,8 @@ def train():
     devel_f1=copy.deepcopy(tem)
     
     print('starting training loop')
+
+    max_f1=0
     tot_epoch=100
     for epoch in range(tot_epoch):
 
@@ -170,8 +172,20 @@ def train():
         for k in devel_loss:
             print(dataset_name[k], ' ', devel_f1[k][-1], ' ', devel_acc[k][-1], ' ', devel_loss[k][-1])
 
+        save_result('f1.txt',devel_f1)
+        save_result('acc.txt',devel_acc)
 
-    torch.save(model.state_dict(),'best-model.pt')
+
+        average_f1=0
+        for k in devel_f1:
+            average_f1+=devel_f1[k][-1]
+        average_f1/=len(devel_f1)
+
+        if average_f1>max_f1:
+            max_f1=average_f1
+            torch.save(model.state_dict(), 'best-model.pt')
+
+
     print('done')
     
 
