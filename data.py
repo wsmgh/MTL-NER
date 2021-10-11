@@ -44,7 +44,7 @@ class DataPacker:
         if tem is None:
             self.ls.remove(id)
         else :
-            self.batchs[id]=batch
+            self.batchs[id]=tem
 
         return batch,id
 
