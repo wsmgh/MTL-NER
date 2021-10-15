@@ -1,9 +1,35 @@
 import torch
 import copy
-from utils import *
+from tqdm import tqdm
 from torch.utils.data import DataLoader,Dataset
 from collections import namedtuple
 import random
+from utils import collect_words,next_items_of_iterators,my_next,load_data
+
+
+class Task:
+
+    def __init__(self,t_name,t_id,train_data,devel_data,test_data,batch_size):
+        self.t_name=t_name
+        self.t_id=t_id
+        self.train_dl=DataLoader(NerDataset(train_data),batch_size=batch_size)
+        self.devel_dl=DataLoader(NerDataset(devel_data),batch_size=batch_size)
+        self.test_dl=DataLoader(NerDataset(test_data),batch_size=batch_size)
+        self.batch_size=batch_size
+        tagset = collect_words(list(map(lambda x: x[1], train_data+devel_data+test_data)))
+        self.label2id = {w: i for i, w in enumerate(tagset)}
+
+
+    def get_train_dataloader(self):
+        return self.train_dl
+
+    def get_devel_dataloader(self):
+        return self.devel_dl
+
+    def get_test_dataloader(self):
+        return self.test_dl
+
+
 
 class NerDataset(Dataset):
 

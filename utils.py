@@ -1,5 +1,5 @@
 import torch
-from data import *
+
 from collections import namedtuple
 from collections import Counter
 import os

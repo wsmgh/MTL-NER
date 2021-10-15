@@ -44,7 +44,7 @@ def train():
         tem_dl={}
         for i in data.keys():
             tem_ds[i]=NerDataset(data[i])
-            tem_dl[i]=DataLoader(tem_ds[i], batch_size=32)
+            tem_dl[i]=DataLoader(tem_ds[i], batch_size=10,shuffle=True)
 
         ds.append(tem_ds)
         dl.append(tem_dl)
@@ -55,7 +55,7 @@ def train():
     device = torch.device('cuda')
 
     print('building model')
-    model = MTL_BC(len(vocab), len(char),w_emb_size=200,c_emb_size=30,w_hiden_size=300,c_hiden_size=600,dropout_rate=0,ds=ds_info,device=device).to(device)
+    model = MTL_BC(len(vocab), len(char),w_emb_size=200,c_emb_size=30,w_hiden_size=300,c_hiden_size=600,dropout_rate=0.5,ds=ds_info,device=device).to(device)
 
     pre_word_emb=pre_word_emb.to(device)
 
@@ -65,8 +65,8 @@ def train():
         print('loading parameters from checkpoint')
         model.load_state_dict(torch.load('best-model.pt'))
 
-    #optim = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.05)
-    optim = torch.optim.Adam(model.parameters())
+    optim = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.05)
+    #optim = torch.optim.Adam(model.parameters())
 
     tem={}
     for i in range(len(dataset_name)):
