@@ -105,8 +105,6 @@ def train():
         with tqdm(dpacker,desc='epoch %d/%d training'%(epoch,tot_epoch)) as pbar:
             for mini_batch,i in pbar:
 
-                # 训练一个大batch（由来自各个数据集的小batch组成）
-
                 batch = tokenize(mini_batch, ds_info[i].label2id, word2id, char2id, device)
 
                 loss,labels = model.forward_loss(batch['word_ids'], batch['char_ids_f'], batch['word_pos_f']

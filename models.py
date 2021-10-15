@@ -180,11 +180,11 @@ class CRF(nn.Module):
 
             pre = scores[i][0]+self.trans[-2,:-2]
 
-            for j in range(lens[i]):
+            for j in range(1,lens[i]):
                 tem_pre=pre.unsqueeze(0).expand(self.tagset_size-2,self.tagset_size-2)
+                t = torch.transpose(self.trans[:-2, :-2], 0, 1)
                 e=scores[i][j].unsqueeze(1).expand(self.tagset_size-2,self.tagset_size-2)
-                t=torch.transpose(self.trans[:-2,:-2],0,1)
-                pre=self.log_sum_exp(tem_pre+e+t)
+                pre=self.log_sum_exp(tem_pre+t+e)
 
             pre=(pre+self.trans[:-2,-1]).unsqueeze(0)
             log_exp_scores[i]=self.log_sum_exp(pre)
@@ -243,18 +243,9 @@ class CRF(nn.Module):
         :param x: m * n
         :return: log_sum_exp of each row : m
         '''
-        '''
         max_values=torch.max(x,dim=1).values
         max_values_batch=max_values[:,None].repeat(1,x.shape[1])
         return max_values+torch.log(torch.sum(torch.exp(x-max_values_batch),dim=1))
-        '''
-        return torch.log(torch.sum(torch.exp(x), dim=1))
-
-
-
-
-
-
 
 
 if __name__=='__main__':
