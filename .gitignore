@@ -5,3 +5,4 @@ data
 test.py
 *.pt
 word_vec
+test_dir
