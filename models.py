@@ -117,7 +117,7 @@ class MTL_BC(nn.Module):
 
 class CRF(nn.Module):
 
-    def __init__(self,tagset,device):
+    def __init__(self,tagset=[],device=None):
         super(CRF, self).__init__()
         '''
         :param tagset: list of all tags

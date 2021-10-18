@@ -1,5 +1,4 @@
 import torch
-
 from collections import namedtuple
 from collections import Counter
 import os
@@ -286,5 +285,4 @@ def load_embedding_wlm(emb_file, delimiter, feature_map, full_feature_set, casel
 
 if __name__=='__main__':
 
-    d={0:[0,0,0,0,0,4],1:[1,1,1,1,1,4],2:[2,2,2,2,2,4]}
-    save_result('t.txt',d)
+    pass

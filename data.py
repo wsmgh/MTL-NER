@@ -4,7 +4,8 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader,Dataset
 from collections import namedtuple
 import random
-from utils import collect_words,next_items_of_iterators,my_next,load_data
+from utils import collect_words, next_items_of_iterators, my_next, load_data, read_data
+import os
 
 
 class Task:
@@ -47,7 +48,8 @@ DataSetInfo = namedtuple('DataSet', 'id2label label2id')
 
 class DataPacker:
 
-    def __init__(self,dls):
+    def __init__(self,dls,keep_order=False):
+        self.keep_order=keep_order
         self.its=[]
         self.length=0
         for dl in dls:
@@ -63,8 +65,14 @@ class DataPacker:
         if len(self.ls)==0:
             raise StopIteration
 
-        random.shuffle(self.ls)
-        id=self.ls[0]
+        if self.keep_order:
+            id=self.ls[0]
+            self.ls.remove(id)
+            self.ls.append(id)
+        else:
+            random.shuffle(self.ls)
+            id=self.ls[0]
+
         batch=self.batchs[id]
         tem=my_next(self.its[id])
         if tem is None:
@@ -78,33 +86,35 @@ class DataPacker:
     def __len__(self):
         return self.length
 
+
+
+def build_tasks(dir='',batch_size=0):
+
+    tasks=[]
+    for id,d in enumerate(os.listdir(dir)):
+        path=os.path.join(dir,d)
+
+        tem={}
+
+        for f in os.listdir(path):
+            if f=='train.tsv':
+                train_data=read_data(os.path.join(path,f))
+                tem['train']=train_data
+            elif f=='devel.tsv':
+                devel_data=read_data(os.path.join(path,f))
+                tem['devel']=devel_data
+            elif f=='test.tsv':
+                test_data=read_data(os.path.join(path,f))
+                tem['test']=test_data
+
+        task=Task(d,id,tem['train'],tem['devel'],tem['test'],batch_size)
+
+        tasks.append(task)
+
+    return tasks
+
+
 if __name__=='__main__':
-    dataset_name, datas = load_data('./data')
 
-    # 创建dataset对象和dataloader对象
-    ds, dl = [], []
-
-    for data in datas:
-        tem_ds = {}
-        tem_dl = {}
-        for i in data.keys():
-            tem_ds[i] = NerDataset(data[i])
-            tem_dl[i] = DataLoader(tem_ds[i], batch_size=32)
-
-        ds.append(tem_ds)
-        dl.append(tem_dl)
-
-    it_train, it_devel, it_test = [], [], []
-    for d in dl:
-        for k in d.keys():
-            if k == 'train':
-                it_train.append(d[k])
-            elif k == 'devel':
-                it_devel.append(d[k])
-            elif k == 'test':
-                it_test.append(d[k])
-
-    dpacker = DataPacker(it_train)
-
-    for d,i in tqdm(dpacker):
-        pass
+    tasks = build_tasks('test_dir', 32)
+    print('done')

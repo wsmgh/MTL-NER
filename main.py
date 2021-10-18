@@ -113,6 +113,7 @@ def train():
 
                 optim.zero_grad()
                 loss.backward()
+                torch.nn.utils.clip_grad_value_(model.parameters(), 5)
                 optim.step()
 
                 labels=get_tag_id(labels,ds_info[i].label2id)
