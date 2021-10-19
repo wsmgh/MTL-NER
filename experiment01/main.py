@@ -1,3 +1,5 @@
+import sys
+sys.path.append('../')
 from models import CRF
 import torch
 from torch import nn
@@ -71,8 +73,11 @@ if __name__=='__main__':
 
     #make sure the two task has the same size in data
     for k in datas[1]:
+        length=min(len(datas[0][k]),len(datas[1][k]))
+        random.shuffle(datas[0][k])
         random.shuffle(datas[1][k])
-        datas[1][k]=datas[1][k][:len(datas[0][k])]
+        datas[0][k] = datas[0][k][:length]
+        datas[1][k]=datas[1][k][:length]
 
     #build vocab
     vocab = []
@@ -92,25 +97,24 @@ if __name__=='__main__':
     tasks=[]
     for i,data in enumerate(datas):
         print('building task:%s ,with task id: %d'%(dataset_name[i],i))
-        tasks.append(Task(dataset_name[i],i,data['train'],data['devel'],data['test'],10))
+        tasks.append(Task(dataset_name[i],i,data['train'],data['devel'],data['test'],10,shuffle=False))
 
     #build model
-    device=torch.device('cpu')
+    device=torch.device('cuda')
     model=BiLSTM_CRF(len(vocab),emb_size=100,hidden_size=200,tasks=tasks,device=device).to(device)
     optim=torch.optim.Adam(model.parameters())
 
     #start train loop
     f1_epoch={0:[],1:[]}
-    tot_epoch=1
-
-    #param_list=[copy.deepcopy(dict(model.named_parameters())['bilstm.weight_ih_l0'])]
+    tot_epoch=30
+    
+    param_list=[copy.deepcopy(dict(model.named_parameters())['bilstm.weight_ih_l0'])]
     for epoch in range(tot_epoch):
 
         dpacker=DataPacker([tasks[0].train_dl,tasks[1].train_dl],True)
         pbar=tqdm(dpacker,'epoch %d/%d'%(epoch,tot_epoch))
 
-        f1_batch={0:[],1:[]}
-
+        model.train()
         for batch,t_id in pbar:
             #print(t_id)
             batch=tokenize(batch,tasks[t_id].label2id,word2id,char2id,device)
@@ -120,20 +124,43 @@ if __name__=='__main__':
             labels = get_tag_id(label, tasks[t_id].label2id)
             f1s = f_score(batch['label_ids'], labels, len(tasks[t_id].label2id), batch['lens'])
             f1=torch.mean(f1s).item()
-            f1_batch[t_id].append(f1)
 
             optim.zero_grad()
             loss.backward()
             optim.step()
 
-            #param_list.append(copy.deepcopy(dict(model.named_parameters())['bilstm.weight_ih_l0']))
+            param_list.append(copy.deepcopy(dict(model.named_parameters())['bilstm.weight_ih_l0']))
 
             pbar.set_postfix_str('%s:%s'%(tasks[t_id].t_name+'-f1',str(f1)))
+
+
+
+
+
+
+        dpacker = DataPacker([tasks[0].devel_dl, tasks[1].devel_dl], True)
+        pbar = tqdm(dpacker, 'epoch %d/%d' % (epoch, tot_epoch))
+
+        f1_batch = {0: [], 1: []}
+        model.eval()
+        for batch, t_id in pbar:
+            # print(t_id)
+            batch = tokenize(batch, tasks[t_id].label2id, word2id, char2id, device)
+
+            loss, label = model.forward_loss(batch['word_ids'], batch['label_ids'], batch['lens'], t_id)
+
+            labels = get_tag_id(label, tasks[t_id].label2id)
+            f1s = f_score(batch['label_ids'], labels, len(tasks[t_id].label2id), batch['lens'])
+            f1 = torch.mean(f1s).item()
+            f1_batch[t_id].append(f1)
+
+            pbar.set_postfix_str('%s:%s' % (tasks[t_id].t_name + '-f1', str(f1)))
 
         for k in f1_batch:
             f1_epoch[k].append(torch.mean(torch.tensor(f1_batch[k])).item())
 
-    #torch.save(param_list,'record_params.pt')
+        save_result('f1.txt',f1_epoch)
 
-
+    torch.save(param_list,'record_params.pt')
+    
     print('done')

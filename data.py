@@ -10,12 +10,12 @@ import os
 
 class Task:
 
-    def __init__(self,t_name,t_id,train_data,devel_data,test_data,batch_size):
+    def __init__(self,t_name,t_id,train_data,devel_data,test_data,batch_size,shuffle=False):
         self.t_name=t_name
         self.t_id=t_id
-        self.train_dl=DataLoader(NerDataset(train_data),batch_size=batch_size)
-        self.devel_dl=DataLoader(NerDataset(devel_data),batch_size=batch_size)
-        self.test_dl=DataLoader(NerDataset(test_data),batch_size=batch_size)
+        self.train_dl=DataLoader(NerDataset(train_data),batch_size=batch_size,shuffle=shuffle)
+        self.devel_dl=DataLoader(NerDataset(devel_data),batch_size=batch_size,shuffle=shuffle)
+        self.test_dl=DataLoader(NerDataset(test_data),batch_size=batch_size,shuffle=shuffle)
         self.batch_size=batch_size
         tagset = collect_words(list(map(lambda x: x[1], train_data+devel_data+test_data)))
         self.label2id = {w: i for i, w in enumerate(tagset)}
