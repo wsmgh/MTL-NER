@@ -65,12 +65,13 @@ if __name__=='__main__':
     from utils import *
     from data import *
     from metrics import *
+    from prune import *
     from tqdm import tqdm
     import random
     import copy
     print('loading datas')
     dataset_name, datas = load_data('../test_dir')
-
+    print()
     #make sure the two task has the same size in data
     for k in datas[1]:
         length=min(len(datas[0][k]),len(datas[1][k]))
@@ -100,11 +101,15 @@ if __name__=='__main__':
         tasks.append(Task(dataset_name[i],i,data['train'],data['devel'],data['test'],10,shuffle=False))
 
     #build model
-    device=torch.device('cpu')
+    device=torch.device('cuda')
     model=BiLSTM_CRF(len(vocab),emb_size=100,hidden_size=200,tasks=tasks,device=device).to(device)
     optim=torch.optim.Adam(model.parameters())
 
+    #load mask and apply to model
+    mask=torch.load('mask.pt')
+    apply_mask_to_model(model,mask)
 
+    '''
     #get the params that need to be recorded
     names=['bilstm.weight_ih_l0','bilstm.weight_hh_l0','bilstm.weight_ih_l0_reverse','bilstm.weight_hh_l0_reverse']
     all_params=dict(model.named_parameters())
@@ -118,6 +123,7 @@ if __name__=='__main__':
     for k in pre_params:
         increment[k]=torch.zeros(pre_params[k].shape)
         decrement[k]=torch.zeros(pre_params[k].shape)
+    '''
 
     # start train loop
     f1_epoch = {0: [], 1: []}
@@ -141,14 +147,18 @@ if __name__=='__main__':
 
             optim.zero_grad()
             loss.backward()
+
+            apply_mask_to_grad(model,mask)
+
             optim.step()
 
+            '''
             #get params after backward
             all_params = dict(model.named_parameters())
             cur_params={}
             for name in names:
                 cur_params[name] = copy.deepcopy(all_params[name])
-                delta=cur_params[name]-pre_params[name]
+                delta=(cur_params[name]-pre_params[name]).to('cpu')
                 mask=delta>0
                 increment[name][mask]+=delta[mask]
                 decrement[name][mask==False] += delta[mask==False]
@@ -156,6 +166,7 @@ if __name__=='__main__':
             pre_params=cur_params
 
             #param_list.append(copy.deepcopy(dict(model.named_parameters())['bilstm.weight_ih_l0']))
+            '''
 
             pbar.set_postfix_str('%s:%s'%(tasks[t_id].t_name+'-f1',str(f1)))
 
@@ -187,7 +198,7 @@ if __name__=='__main__':
 
         save_result('f1.txt',f1_epoch)
 
-
+    '''
     r={}
     mask = {}
     for name in names:
@@ -202,6 +213,7 @@ if __name__=='__main__':
     torch.save(increment,'increment.pt')
     torch.save(decrement,'decrement.pt')
     torch.save(r,'r.pt')
+    '''
 
 
 
