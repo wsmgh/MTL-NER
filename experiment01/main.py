@@ -100,15 +100,29 @@ if __name__=='__main__':
         tasks.append(Task(dataset_name[i],i,data['train'],data['devel'],data['test'],10,shuffle=False))
 
     #build model
-    device=torch.device('cuda')
+    device=torch.device('cpu')
     model=BiLSTM_CRF(len(vocab),emb_size=100,hidden_size=200,tasks=tasks,device=device).to(device)
     optim=torch.optim.Adam(model.parameters())
 
-    #start train loop
-    f1_epoch={0:[],1:[]}
-    tot_epoch=30
-    
-    param_list=[copy.deepcopy(dict(model.named_parameters())['bilstm.weight_ih_l0'])]
+
+    #get the params that need to be recorded
+    names=['bilstm.weight_ih_l0','bilstm.weight_hh_l0','bilstm.weight_ih_l0_reverse','bilstm.weight_hh_l0_reverse']
+    all_params=dict(model.named_parameters())
+    pre_params={}
+    for name in names:
+        pre_params[name]=copy.deepcopy(all_params[name])
+
+    #init increment and decrement
+    increment={}
+    decrement={}
+    for k in pre_params:
+        increment[k]=torch.zeros(pre_params[k].shape)
+        decrement[k]=torch.zeros(pre_params[k].shape)
+
+    # start train loop
+    f1_epoch = {0: [], 1: []}
+    tot_epoch = 10
+
     for epoch in range(tot_epoch):
 
         dpacker=DataPacker([tasks[0].train_dl,tasks[1].train_dl],True)
@@ -129,7 +143,19 @@ if __name__=='__main__':
             loss.backward()
             optim.step()
 
-            param_list.append(copy.deepcopy(dict(model.named_parameters())['bilstm.weight_ih_l0']))
+            #get params after backward
+            all_params = dict(model.named_parameters())
+            cur_params={}
+            for name in names:
+                cur_params[name] = copy.deepcopy(all_params[name])
+                delta=cur_params[name]-pre_params[name]
+                mask=delta>0
+                increment[name][mask]+=delta[mask]
+                decrement[name][mask==False] += delta[mask==False]
+
+            pre_params=cur_params
+
+            #param_list.append(copy.deepcopy(dict(model.named_parameters())['bilstm.weight_ih_l0']))
 
             pbar.set_postfix_str('%s:%s'%(tasks[t_id].t_name+'-f1',str(f1)))
 
@@ -161,6 +187,24 @@ if __name__=='__main__':
 
         save_result('f1.txt',f1_epoch)
 
-    torch.save(param_list,'record_params.pt')
+
+    r={}
+    mask = {}
+    for name in names:
+        decrement[name]=torch.abs(decrement[name])
+        m=increment[name]<decrement[name]
+        x=torch.where(m,increment[name],decrement[name])
+        y=torch.where(m,decrement[name],increment[name])
+        r[name]=x/y
+        mask[name]=torch.where(r[name]>0.9,torch.zeros(r[name].shape),torch.ones(r[name].shape))
+
+    torch.save(mask,'mask.pt')
+    torch.save(increment,'increment.pt')
+    torch.save(decrement,'decrement.pt')
+    torch.save(r,'r.pt')
+
+
+
+    #torch.save(param_list,'record_params.pt')
     
     print('done')
