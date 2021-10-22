@@ -7,7 +7,7 @@ from torch import nn
 
 class BiLSTM_CRF(nn.Module):
 
-    def __init__(self,vocab_size,emb_size,hidden_size,tasks,device):
+    def __init__(self,vocab_size,emb_size,hidden_size,tasks,device,dropout_rate=0.5):
 
         super(BiLSTM_CRF, self).__init__()
 
@@ -16,7 +16,9 @@ class BiLSTM_CRF(nn.Module):
         self.hidden_size=hidden_size
         self.tasks=tasks
         self.device=device
+        self.dropout_rate=dropout_rate
 
+        self.dropout=nn.Dropout(self.dropout_rate)
 
         self.embedding=nn.Embedding(self.vocab_size,self.emb_size)
 
@@ -37,6 +39,8 @@ class BiLSTM_CRF(nn.Module):
 
         # batch_size * seq_len * (2*hidden_size)
         bilstm_out,_=self.bilstm(emb)
+
+        bilstm_out=self.dropout(bilstm_out)
 
         # batch_size * seq_len * tag_size
         score=self.linear[t_id](bilstm_out)
@@ -105,9 +109,12 @@ if __name__=='__main__':
     model=BiLSTM_CRF(len(vocab),emb_size=100,hidden_size=200,tasks=tasks,device=device).to(device)
     optim=torch.optim.Adam(model.parameters())
 
+    '''
     #load mask and apply to model
     mask=torch.load('mask.pt')
     apply_mask_to_model(model,mask)
+    '''
+
 
     '''
     #get the params that need to be recorded
@@ -148,7 +155,7 @@ if __name__=='__main__':
             optim.zero_grad()
             loss.backward()
 
-            apply_mask_to_grad(model,mask)
+            #apply_mask_to_grad(model,mask)
 
             optim.step()
 
